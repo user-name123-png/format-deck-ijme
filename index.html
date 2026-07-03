@@ -48,6 +48,7 @@
             max-width: 500px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             text-align: center;
+            transition: all 0.3s ease;
         }
 
         .converter-card h1 {
@@ -63,19 +64,9 @@
             color: #4a4a4a;
         }
 
-        .file-upload-wrapper {
-            position: relative;
-            margin-bottom: 25px;
-        }
-
-        .file-upload-wrapper input[type="file"] {
-            position: absolute;
-            left: 0;
-            top: 0;
-            opacity: 0;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
+        /* ซ่อน Input แบบเนียนๆ */
+        #fileInput {
+            display: none;
         }
 
         .file-upload-box {
@@ -83,12 +74,15 @@
             border-radius: 16px;
             padding: 40px 20px;
             background: rgba(255, 255, 255, 0.5);
+            cursor: pointer; /* เปลี่ยนเมาส์เป็นรูปนิ้วตอนชี้ */
             transition: all 0.3s ease;
+            margin-bottom: 25px;
         }
 
-        .file-upload-wrapper:hover .file-upload-box {
-            background: rgba(255, 255, 255, 0.8);
+        .file-upload-box:hover, .file-upload-box.dragover {
+            background: rgba(255, 255, 255, 0.9);
             transform: translateY(-2px);
+            border-color: #5A4BDE;
         }
 
         .file-upload-box span {
@@ -96,6 +90,7 @@
             margin-top: 10px;
             font-weight: 600;
             color: var(--primary);
+            word-break: break-word; /* ป้องกันชื่อไฟล์ยาวเกินกรอบ */
         }
 
         .form-group {
@@ -200,6 +195,36 @@
         .btn-download:hover {
             background: #00a383;
         }
+
+        /* Responsive Design สำหรับมือถือและจอขนาดเล็ก */
+        @media (max-width: 500px) {
+            .converter-card {
+                padding: 25px 20px; /* ลด Padding ลงเมื่อจอเล็ก */
+                border-radius: 16px;
+            }
+
+            .converter-card h1 {
+                font-size: 20px; /* ลดขนาดฟอนต์ */
+            }
+
+            .file-upload-box {
+                padding: 30px 15px;
+            }
+
+            .file-upload-box svg {
+                width: 32px;
+                height: 32px;
+            }
+
+            .file-upload-box span {
+                font-size: 14px;
+            }
+
+            select, .btn-convert {
+                font-size: 15px;
+                padding: 10px 14px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -208,16 +233,14 @@
         <h1>แปลงนามสกุลไฟล์</h1>
         <p>รองรับวิดีโอและเสียง (MP4, MKV, MP3, WAV และอื่นๆ)</p>
 
-        <div class="file-upload-wrapper">
-            <input type="file" id="fileInput" accept="video/*,audio/*,image/*">
-            <div class="file-upload-box" id="dropBox">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-                <span id="fileName">คลิกเพื่อเลือกไฟล์ หรือลากมาวางที่นี่</span>
-            </div>
+        <input type="file" id="fileInput" accept="video/*,audio/*,image/*">
+        <div class="file-upload-box" id="dropBox">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <span id="fileName">คลิกเพื่อเลือกไฟล์ หรือลากมาวางที่นี่</span>
         </div>
 
         <div class="form-group">
@@ -279,10 +302,36 @@
 
         let selectedFile = null;
 
-        // จัดการเมื่อมีการเลือกไฟล์
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                selectedFile = e.target.files[0];
+        // --- จุดที่แก้ไข ---
+        // 1. ทำให้คลิกที่กล่องแล้วเปิดหน้าต่างเลือกไฟล์
+        dropBox.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 2. เพิ่มระบบ Drag & Drop ลากไฟล์มาวางได้
+        dropBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropBox.classList.add('dragover');
+        });
+
+        dropBox.addEventListener('dragleave', () => {
+            dropBox.classList.remove('dragover');
+        });
+
+        dropBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropBox.classList.remove('dragover');
+            
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files; // โยนไฟล์เข้า input
+                handleFileChange(e.dataTransfer.files[0]);
+            }
+        });
+
+        // ฟังชั่นจัดการเมื่อมีการเลือกหรือลากไฟล์มาวาง
+        function handleFileChange(file) {
+            if (file) {
+                selectedFile = file;
                 fileNameDisplay.textContent = `ไฟล์ที่เลือก: ${selectedFile.name}`;
                 convertBtn.disabled = false;
                 
@@ -295,15 +344,22 @@
                 fileNameDisplay.textContent = 'คลิกเพื่อเลือกไฟล์ หรือลากมาวางที่นี่';
                 convertBtn.disabled = true;
             }
-        });
+        }
 
-        // จำลองระบบแปลงไฟล์ (UI Simulation)
+        // จับ Event เมื่อเลือกไฟล์ผ่านปุ่มคลิก
+        fileInput.addEventListener('change', (e) => {
+            handleFileChange(e.target.files[0]);
+        });
+        // --- สิ้นสุดจุดที่แก้ไข ---
+
+        // จำลองระบบแปลงไฟล์
         convertBtn.addEventListener('click', () => {
             if (!selectedFile) return;
 
             convertBtn.disabled = true;
             fileInput.disabled = true;
             formatSelect.disabled = true;
+            dropBox.style.pointerEvents = 'none'; // ปิดการคลิกกล่องระหว่างแปลง
             
             progressContainer.style.display = 'block';
             resultContainer.style.display = 'none';
@@ -311,7 +367,6 @@
             const targetFormat = formatSelect.value;
             let progress = 0;
 
-            // จำลองการโหลด (ถ้าเอาไปต่อ Backend จริงๆ ให้ใช้ XHR หรือ Fetch API อัปเดต Progress แทน)
             const interval = setInterval(() => {
                 progress += Math.floor(Math.random() * 10) + 5;
                 if (progress >= 100) {
@@ -323,11 +378,11 @@
                         progressContainer.style.display = 'none';
                         resultContainer.style.display = 'block';
                         
-                        // คืนค่าปุ่มให้กลับมาใช้งานได้
                         fileInput.disabled = false;
                         formatSelect.disabled = false;
                         convertBtn.disabled = false;
                         convertBtn.textContent = 'แปลงไฟล์อีกครั้ง';
+                        dropBox.style.pointerEvents = 'auto'; // เปิดการคลิกกล่องใหม่
                     }, 500);
                 }
                 
