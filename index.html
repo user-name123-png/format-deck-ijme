@@ -119,7 +119,6 @@
             border-color: var(--primary);
         }
 
-        /* ระบบ Dropdown ค้นหา */
         .custom-select-wrapper {
             position: relative;
         }
@@ -268,7 +267,7 @@
 
     <div class="converter-card">
         <h1>แปลงนามสกุลไฟล์</h1>
-        <p>รองรับวิดีโอ, เสียง, รูปภาพ, รูป RAW และเอกสารทุกชนิด</p>
+        <p>รองรับวิดีโอ, เสียง, รูปภาพ, รูป RAW และเอกสาร</p>
 
         <input type="file" id="fileInput" accept="*/*">
         
@@ -288,7 +287,7 @@
 
         <div class="form-group custom-select-wrapper">
             <label for="formatSearch">ค้นหาหรือเลือกนามสกุลไฟล์ที่ต้องการแปลง</label>
-            <input type="text" id="formatSearch" placeholder="พิมพ์ค้นหา (เช่น mp4, jpg)..." autocomplete="off">
+            <input type="text" id="formatSearch" placeholder="พิมพ์ค้นหา (เช่น mp4, jpg)..." autocomplete="off" disabled>
             <div class="options-list" id="optionsList"></div>
         </div>
 
@@ -334,6 +333,17 @@
             "อีบุ๊ค (eBook)": ["epub", "mobi", "azw", "azw3", "azw4", "kfx", "fb2", "djvu", "djv", "xps", "oxps", "abw", "zabw", "sxw", "sxc", "sxi", "sxg", "stw", "uot", "uof", "uos", "uos2"]
         };
 
+        // กฎที่แก้ไขให้เข้มงวด: อนุญาตให้แปลงเฉพาะในหมวดหมู่ที่เหมาะสมเท่านั้น
+        const conversionRules = {
+            "วิดีโอ (Video)": ["วิดีโอ (Video)", "เสียง (Audio)"], // วิดีโอแปลงเป็นวิดีโอด้วยกัน หรือแยกเฉพาะไฟล์เสียง
+            "เสียง (Audio)": ["เสียง (Audio)"], // เสียงแปลงเป็นเสียงเท่านั้น
+            "รูปภาพทั่วไป (Image)": ["รูปภาพทั่วไป (Image)"], // ภาพแปลงเป็นภาพเท่านั้น
+            "รูปภาพจากกล้อง (Camera RAW)": ["รูปภาพทั่วไป (Image)", "รูปภาพจากกล้อง (Camera RAW)"], // ไฟล์ RAW แปลงเป็นภาพทั่วไปได้
+            "เอกสาร (Document & PDF)": ["เอกสาร (Document & PDF)"], // เอกสารแปลงเป็นเอกสารเท่านั้น
+            "ข้อมูลและการแสดงผล (Data & Code)": ["ข้อมูลและการแสดงผล (Data & Code)"], // ไฟล์สคริปต์/ข้อมูล แปลงเป็นประเภทเดียวกันเท่านั้น
+            "อีบุ๊ค (eBook)": ["อีบุ๊ค (eBook)"] // อีบุ๊คแปลงเป็นอีบุ๊คเท่านั้น
+        };
+
         const mimeTypes = {
             'mp4': 'video/mp4', 'mkv': 'video/x-matroska', 'webm': 'video/webm',
             'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'ogg': 'audio/ogg', 'm4a': 'audio/mp4',
@@ -343,10 +353,18 @@
             'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         };
 
-        // 1. สร้างตัวเลือก (Options) ใน Dropdown
+        function getFileGroup(extension) {
+            for (const [group, exts] of Object.entries(formatGroups)) {
+                if (exts.includes(extension.toLowerCase())) return group;
+            }
+            return null;
+        }
+
+        // สร้างตัวเลือก (Options) ใน Dropdown
         for (const [groupName, extensions] of Object.entries(formatGroups)) {
             const groupDiv = document.createElement('div');
             groupDiv.className = 'option-group';
+            groupDiv.dataset.group = groupName;
             groupDiv.textContent = groupName;
             optionsList.appendChild(groupDiv);
             
@@ -354,10 +372,12 @@
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'option-item';
                 itemDiv.dataset.value = ext;
+                itemDiv.dataset.group = groupName;
+                itemDiv.dataset.allowed = "false";
                 itemDiv.textContent = `.${ext}`;
+                itemDiv.style.display = 'none';
                 optionsList.appendChild(itemDiv);
                 
-                // เมื่อคลิกเลือกนามสกุล
                 itemDiv.addEventListener('click', () => {
                     formatSearch.value = `.${ext}`;
                     optionsList.style.display = 'none';
@@ -366,7 +386,40 @@
             });
         }
 
-        // 2. ระบบค้นหาและกรอง (Filter)
+        // ฟังก์ชันกรองนามสกุลที่อนุญาตอย่างเข้มงวด
+        function filterAllowedFormats(sourceExtension) {
+            const sourceGroup = getFileGroup(sourceExtension);
+            
+            // ถ้าไม่รู้จักไฟล์ ให้เปิดให้แปลงได้ทั้งหมด (เพื่อกันไฟล์แปลกๆ) แต่ถ้ารู้จัก จะใช้กฎความเข้มงวด
+            const allowedGroups = sourceGroup && conversionRules[sourceGroup] 
+                                    ? conversionRules[sourceGroup] 
+                                    : Object.keys(formatGroups);
+
+            const items = optionsList.querySelectorAll('.option-item');
+            const groups = optionsList.querySelectorAll('.option-group');
+
+            items.forEach(item => {
+                const targetExt = item.dataset.value;
+                const targetGroup = item.dataset.group;
+                
+                if (allowedGroups.includes(targetGroup) && targetExt !== sourceExtension.toLowerCase()) {
+                    item.dataset.allowed = "true";
+                    item.style.display = 'block';
+                } else {
+                    item.dataset.allowed = "false";
+                    item.style.display = 'none';
+                }
+            });
+
+            groups.forEach(group => {
+                if (allowedGroups.includes(group.dataset.group)) {
+                    group.style.display = 'block';
+                } else {
+                    group.style.display = 'none';
+                }
+            });
+        }
+
         formatSearch.addEventListener('focus', () => {
             optionsList.style.display = 'block';
         });
@@ -374,11 +427,9 @@
         formatSearch.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase().replace('.', '');
             const items = optionsList.querySelectorAll('.option-item');
-            const groups = optionsList.querySelectorAll('.option-group');
             
-            // ซ่อน/แสดง ตัวเลือก
             items.forEach(item => {
-                if (item.dataset.value.toLowerCase().includes(searchTerm)) {
+                if (item.dataset.allowed === "true" && item.dataset.value.toLowerCase().includes(searchTerm)) {
                     item.style.display = 'block';
                 } else {
                     item.style.display = 'none';
@@ -387,14 +438,12 @@
             checkReadyState();
         });
 
-        // ซ่อน Dropdown เมื่อคลิกที่อื่น
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.custom-select-wrapper')) {
                 optionsList.style.display = 'none';
             }
         });
 
-        // 3. จัดการไฟล์ที่อัปโหลด (Drag & Drop)
         dropBox.addEventListener('click', () => fileInput.click());
         dropBox.addEventListener('dragover', (e) => { e.preventDefault(); dropBox.classList.add('dragover'); });
         dropBox.addEventListener('dragleave', () => dropBox.classList.remove('dragover'));
@@ -413,7 +462,12 @@
                 fileNameDisplay.textContent = `ไฟล์ที่เลือก: ${selectedFile.name}`;
                 
                 const lastDotIndex = selectedFile.name.lastIndexOf('.');
+                const extension = lastDotIndex !== -1 ? selectedFile.name.substring(lastDotIndex + 1) : '';
                 outputFileName.value = lastDotIndex !== -1 ? selectedFile.name.substring(0, lastDotIndex) : selectedFile.name;
+
+                formatSearch.value = '';
+                formatSearch.disabled = false;
+                filterAllowedFormats(extension);
 
                 progressContainer.style.display = 'none';
                 resultContainer.style.display = 'none';
@@ -424,13 +478,14 @@
                 selectedFile = null;
                 fileNameDisplay.textContent = 'คลิกเพื่อเลือกไฟล์ หรือลากมาวางที่นี่';
                 outputFileName.value = '';
+                formatSearch.value = '';
+                formatSearch.disabled = true;
             }
             checkReadyState();
         }
 
         fileInput.addEventListener('change', (e) => handleFileChange(e.target.files[0]));
 
-        // เช็คว่ากรอกครบหรือยังเพื่อเปิดปุ่ม
         function checkReadyState() {
             const formatSelected = formatSearch.value.replace('.', '').trim();
             if (selectedFile && formatSelected) {
@@ -440,13 +495,9 @@
             }
         }
 
-        // 4. ระบบการแปลงไฟล์
         convertBtn.addEventListener('click', () => {
             const targetFormat = formatSearch.value.replace('.', '').trim().toLowerCase();
-            if (!selectedFile || !targetFormat) {
-                alert("กรุณาเลือกไฟล์และนามสกุลปลายทางให้ถูกต้อง");
-                return;
-            }
+            if (!selectedFile || !targetFormat) return;
 
             convertBtn.disabled = true;
             fileInput.disabled = true;
