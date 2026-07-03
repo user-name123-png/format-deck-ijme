@@ -104,7 +104,7 @@
             font-size: 14px;
         }
 
-        select, input[type="text"] {
+        input[type="text"] {
             width: 100%;
             padding: 12px 16px;
             border-radius: 12px;
@@ -115,12 +115,64 @@
             transition: border 0.3s;
         }
 
-        select {
-            cursor: pointer;
+        input[type="text"]:focus {
+            border-color: var(--primary);
         }
 
-        select:focus, input[type="text"]:focus {
-            border-color: var(--primary);
+        /* ระบบ Dropdown ค้นหา */
+        .custom-select-wrapper {
+            position: relative;
+        }
+
+        .options-list {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            max-height: 250px;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            margin-top: 5px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            text-align: left;
+            backdrop-filter: blur(10px);
+        }
+
+        .options-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .options-list::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 8px;
+        }
+
+        .option-group {
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            background: #f1f2f6;
+            text-transform: uppercase;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .option-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: background 0.2s;
+        }
+
+        .option-item:hover {
+            background: var(--secondary);
+            color: white;
         }
 
         .btn-convert {
@@ -202,20 +254,10 @@
                 padding: 25px 20px;
                 border-radius: 16px;
             }
-            .converter-card h1 {
-                font-size: 20px;
-            }
             .file-upload-box {
                 padding: 30px 15px;
             }
-            .file-upload-box svg {
-                width: 32px;
-                height: 32px;
-            }
-            .file-upload-box span {
-                font-size: 14px;
-            }
-            select, input[type="text"], .btn-convert {
+            input[type="text"], .btn-convert {
                 font-size: 15px;
                 padding: 10px 14px;
             }
@@ -226,9 +268,10 @@
 
     <div class="converter-card">
         <h1>แปลงนามสกุลไฟล์</h1>
-        <p>รองรับวิดีโอและเสียง (MP4, MKV, MP3, WAV และอื่นๆ)</p>
+        <p>รองรับวิดีโอ, เสียง, รูปภาพ, รูป RAW และเอกสารทุกชนิด</p>
 
-        <input type="file" id="fileInput" accept="video/*,audio/*,image/*">
+        <input type="file" id="fileInput" accept="*/*">
+        
         <div class="file-upload-box" id="dropBox">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -240,38 +283,13 @@
 
         <div class="form-group">
             <label for="outputFileName">ตั้งชื่อไฟล์ใหม่ (ไม่ต้องใส่จุดนามสกุล)</label>
-            <input type="text" id="outputFileName" placeholder="เช่น my_new_video">
+            <input type="text" id="outputFileName" placeholder="เช่น my_new_file">
         </div>
 
-        <div class="form-group">
-            <label for="formatSelect">เลือกนามสกุลไฟล์ที่ต้องการแปลง</label>
-            <select id="formatSelect">
-                <optgroup label="Video Formats">
-                    <option value="mp4">.mp4</option>
-                    <option value="mkv">.mkv</option>
-                    <option value="avi">.avi</option>
-                    <option value="mov">.mov</option>
-                    <option value="wmv">.wmv</option>
-                    <option value="flv">.flv</option>
-                    <option value="webm">.webm</option>
-                    <option value="m4v">.m4v</option>
-                    <option value="3gp">.3gp</option>
-                    <option value="mpeg">.mpeg</option>
-                    <option value="ts">.ts</option>
-                </optgroup>
-                <optgroup label="Audio Formats">
-                    <option value="mp3">.mp3</option>
-                    <option value="wav">.wav</option>
-                    <option value="aac">.aac</option>
-                    <option value="m4a">.m4a</option>
-                    <option value="flac">.flac</option>
-                    <option value="ogg">.ogg</option>
-                    <option value="wma">.wma</option>
-                    <option value="alac">.alac</option>
-                    <option value="aiff">.aiff</option>
-                    <option value="amr">.amr</option>
-                </optgroup>
-            </select>
+        <div class="form-group custom-select-wrapper">
+            <label for="formatSearch">ค้นหาหรือเลือกนามสกุลไฟล์ที่ต้องการแปลง</label>
+            <input type="text" id="formatSearch" placeholder="พิมพ์ค้นหา (เช่น mp4, jpg)..." autocomplete="off">
+            <div class="options-list" id="optionsList"></div>
         </div>
 
         <button class="btn-convert" id="convertBtn" disabled>เริ่มการแปลงไฟล์</button>
@@ -297,34 +315,89 @@
         const progressBar = document.getElementById('progressBar');
         const statusText = document.getElementById('statusText');
         const resultContainer = document.getElementById('resultContainer');
-        const formatSelect = document.getElementById('formatSelect');
         const dropBox = document.getElementById('dropBox');
         const outputFileName = document.getElementById('outputFileName');
         const downloadBtn = document.getElementById('downloadBtn');
+        const formatSearch = document.getElementById('formatSearch');
+        const optionsList = document.getElementById('optionsList');
 
         let selectedFile = null;
         let objectUrl = null; 
 
-        // ฐานข้อมูลจำลอง MIME Type สำหรับบังคับให้ระบบมองเป็นไฟล์สกุลใหม่
-        const mimeTypes = {
-            'mp4': 'video/mp4', 'mkv': 'video/x-matroska', 'webm': 'video/webm',
-            'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'ogg': 'audio/ogg',
-            'm4a': 'audio/mp4', 'flac': 'audio/flac'
+        const formatGroups = {
+            "วิดีโอ (Video)": ["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "3gp", "mpeg", "mpg", "ts"],
+            "เสียง (Audio)": ["mp3", "wav", "aac", "m4a", "flac", "ogg", "wma", "alac", "aiff", "amr"],
+            "รูปภาพทั่วไป (Image)": ["jpg", "jpeg", "jpe", "jfif", "pjpeg", "pjp", "png", "apng", "gif", "bmp", "dib", "rle", "tiff", "tif", "webp", "svg", "svgz", "ico", "cur", "heic", "heif", "avif", "jxl", "jp2", "j2k", "jpf", "jpx", "jpm", "mj2", "wdp", "hdp", "jxr", "dds", "ktx", "ktx2", "astc", "basis", "psd", "psb", "ai", "eps", "indd"],
+            "รูปภาพจากกล้อง (Camera RAW)": ["raw", "dng", "cr2", "cr3", "crw", "nef", "nrw", "arw", "sr2", "srf", "orf", "rw2", "raf", "pef", "srw", "x3f", "3fr", "fff", "iiq", "k25", "kdc", "mef", "mos", "mrw", "erf", "rwl", "bay", "cap", "dcs", "dcr", "drf", "eip", "kqp", "mdc", "pxn", "pxr", "qtk", "sti", "gpr", "ciff"],
+            "เอกสาร (Document & PDF)": ["pdf", "fdf", "xfdf", "doc", "docx", "docm", "dot", "dotx", "dotm", "xls", "xlsx", "xlsm", "xlsb", "xlt", "xltx", "xltm", "ppt", "pptx", "pptm", "pps", "ppsx", "ppsm", "pot", "potx", "potm", "txt", "text", "log", "rtf", "odt", "ott", "odm", "ods", "ots", "odp", "otp", "odg", "otg", "odf", "odb"],
+            "ข้อมูลและการแสดงผล (Data & Code)": ["csv", "tsv", "tab", "md", "markdown", "tex", "latex", "ltx", "bib", "wpd", "wps", "wks", "wk1", "wk3", "wk4", "123", "pages", "numbers", "key", "pub", "vsd", "vsdx", "one", "onetoc2", "note", "xml", "json", "yaml", "yml", "ini", "cfg", "conf", "properties", "resx", "plist", "sql", "db", "sqlite", "sqlite3", "accdb", "mdb"],
+            "อีบุ๊ค (eBook)": ["epub", "mobi", "azw", "azw3", "azw4", "kfx", "fb2", "djvu", "djv", "xps", "oxps", "abw", "zabw", "sxw", "sxc", "sxi", "sxg", "stw", "uot", "uof", "uos", "uos2"]
         };
 
-        dropBox.addEventListener('click', () => {
-            fileInput.click();
+        const mimeTypes = {
+            'mp4': 'video/mp4', 'mkv': 'video/x-matroska', 'webm': 'video/webm',
+            'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'ogg': 'audio/ogg', 'm4a': 'audio/mp4',
+            'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png', 'gif': 'image/gif',
+            'webp': 'image/webp', 'svg': 'image/svg+xml', 'pdf': 'application/pdf',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        };
+
+        // 1. สร้างตัวเลือก (Options) ใน Dropdown
+        for (const [groupName, extensions] of Object.entries(formatGroups)) {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'option-group';
+            groupDiv.textContent = groupName;
+            optionsList.appendChild(groupDiv);
+            
+            extensions.forEach(ext => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'option-item';
+                itemDiv.dataset.value = ext;
+                itemDiv.textContent = `.${ext}`;
+                optionsList.appendChild(itemDiv);
+                
+                // เมื่อคลิกเลือกนามสกุล
+                itemDiv.addEventListener('click', () => {
+                    formatSearch.value = `.${ext}`;
+                    optionsList.style.display = 'none';
+                    checkReadyState();
+                });
+            });
+        }
+
+        // 2. ระบบค้นหาและกรอง (Filter)
+        formatSearch.addEventListener('focus', () => {
+            optionsList.style.display = 'block';
         });
 
-        dropBox.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropBox.classList.add('dragover');
+        formatSearch.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().replace('.', '');
+            const items = optionsList.querySelectorAll('.option-item');
+            const groups = optionsList.querySelectorAll('.option-group');
+            
+            // ซ่อน/แสดง ตัวเลือก
+            items.forEach(item => {
+                if (item.dataset.value.toLowerCase().includes(searchTerm)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            checkReadyState();
         });
 
-        dropBox.addEventListener('dragleave', () => {
-            dropBox.classList.remove('dragover');
+        // ซ่อน Dropdown เมื่อคลิกที่อื่น
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.custom-select-wrapper')) {
+                optionsList.style.display = 'none';
+            }
         });
 
+        // 3. จัดการไฟล์ที่อัปโหลด (Drag & Drop)
+        dropBox.addEventListener('click', () => fileInput.click());
+        dropBox.addEventListener('dragover', (e) => { e.preventDefault(); dropBox.classList.add('dragover'); });
+        dropBox.addEventListener('dragleave', () => dropBox.classList.remove('dragover'));
         dropBox.addEventListener('drop', (e) => {
             e.preventDefault();
             dropBox.classList.remove('dragover');
@@ -338,13 +411,9 @@
             if (file) {
                 selectedFile = file;
                 fileNameDisplay.textContent = `ไฟล์ที่เลือก: ${selectedFile.name}`;
-                convertBtn.disabled = false;
                 
-                // ตรวจหาจุด (.) อันสุดท้ายแล้วตัดนามสกุลออก
                 const lastDotIndex = selectedFile.name.lastIndexOf('.');
-                const nameWithoutExt = lastDotIndex !== -1 ? selectedFile.name.substring(0, lastDotIndex) : selectedFile.name;
-                
-                outputFileName.value = nameWithoutExt;
+                outputFileName.value = lastDotIndex !== -1 ? selectedFile.name.substring(0, lastDotIndex) : selectedFile.name;
 
                 progressContainer.style.display = 'none';
                 resultContainer.style.display = 'none';
@@ -354,28 +423,40 @@
             } else {
                 selectedFile = null;
                 fileNameDisplay.textContent = 'คลิกเพื่อเลือกไฟล์ หรือลากมาวางที่นี่';
-                convertBtn.disabled = true;
                 outputFileName.value = '';
+            }
+            checkReadyState();
+        }
+
+        fileInput.addEventListener('change', (e) => handleFileChange(e.target.files[0]));
+
+        // เช็คว่ากรอกครบหรือยังเพื่อเปิดปุ่ม
+        function checkReadyState() {
+            const formatSelected = formatSearch.value.replace('.', '').trim();
+            if (selectedFile && formatSelected) {
+                convertBtn.disabled = false;
+            } else {
+                convertBtn.disabled = true;
             }
         }
 
-        fileInput.addEventListener('change', (e) => {
-            handleFileChange(e.target.files[0]);
-        });
-
+        // 4. ระบบการแปลงไฟล์
         convertBtn.addEventListener('click', () => {
-            if (!selectedFile) return;
+            const targetFormat = formatSearch.value.replace('.', '').trim().toLowerCase();
+            if (!selectedFile || !targetFormat) {
+                alert("กรุณาเลือกไฟล์และนามสกุลปลายทางให้ถูกต้อง");
+                return;
+            }
 
             convertBtn.disabled = true;
             fileInput.disabled = true;
-            formatSelect.disabled = true;
+            formatSearch.disabled = true;
             outputFileName.disabled = true;
             dropBox.style.pointerEvents = 'none';
             
             progressContainer.style.display = 'block';
             resultContainer.style.display = 'none';
             
-            const targetFormat = formatSelect.value;
             let progress = 0;
 
             const interval = setInterval(() => {
@@ -389,23 +470,17 @@
                         progressContainer.style.display = 'none';
                         resultContainer.style.display = 'block';
                         
-                        let finalName = outputFileName.value.trim();
-                        if (!finalName) {
-                            finalName = 'converted_file';
-                        }
+                        let finalName = outputFileName.value.trim() || 'converted_file';
                         
-                        // --- แก้ไขจุดนี้: บังคับเปลี่ยน MIME Type หรือใช้ octet-stream ---
-                        // เพื่อป้องกัน iOS เติมนามสกุลเดิมต่อท้าย
                         const newMimeType = mimeTypes[targetFormat] || 'application/octet-stream';
                         const blob = new Blob([selectedFile], { type: newMimeType });
                         
                         objectUrl = URL.createObjectURL(blob);
                         downloadBtn.href = objectUrl;
                         downloadBtn.download = `${finalName}.${targetFormat}`;
-                        // -----------------------------------------------------------
 
                         fileInput.disabled = false;
-                        formatSelect.disabled = false;
+                        formatSearch.disabled = false;
                         outputFileName.disabled = false;
                         convertBtn.disabled = false;
                         convertBtn.textContent = 'แปลงไฟล์อีกครั้ง';
@@ -415,7 +490,7 @@
                 
                 progressBar.style.width = `${progress}%`;
                 statusText.textContent = `กำลังแปลงไฟล์เป็น .${targetFormat}... ${progress}%`;
-            }, 400);
+            }, 300);
         });
     </script>
 </body>
