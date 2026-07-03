@@ -64,7 +64,6 @@
             color: #4a4a4a;
         }
 
-        /* ซ่อน Input แบบเนียนๆ */
         #fileInput {
             display: none;
         }
@@ -74,7 +73,7 @@
             border-radius: 16px;
             padding: 40px 20px;
             background: rgba(255, 255, 255, 0.5);
-            cursor: pointer; /* เปลี่ยนเมาส์เป็นรูปนิ้วตอนชี้ */
+            cursor: pointer;
             transition: all 0.3s ease;
             margin-bottom: 25px;
         }
@@ -90,7 +89,7 @@
             margin-top: 10px;
             font-weight: 600;
             color: var(--primary);
-            word-break: break-word; /* ป้องกันชื่อไฟล์ยาวเกินกรอบ */
+            word-break: break-word;
         }
 
         .form-group {
@@ -105,7 +104,8 @@
             font-size: 14px;
         }
 
-        select {
+        /* ใช้ Style เดียวกันทั้ง Select และ Input Text */
+        select, input[type="text"] {
             width: 100%;
             padding: 12px 16px;
             border-radius: 12px;
@@ -113,11 +113,14 @@
             background: rgba(255, 255, 255, 0.7);
             font-size: 16px;
             outline: none;
-            cursor: pointer;
             transition: border 0.3s;
         }
 
-        select:focus {
+        select {
+            cursor: pointer;
+        }
+
+        select:focus, input[type="text"]:focus {
             border-color: var(--primary);
         }
 
@@ -145,7 +148,6 @@
             transform: none;
         }
 
-        /* Progress Bar */
         .progress-container {
             display: none;
             margin-top: 25px;
@@ -196,15 +198,14 @@
             background: #00a383;
         }
 
-        /* Responsive Design สำหรับมือถือและจอขนาดเล็ก */
         @media (max-width: 500px) {
             .converter-card {
-                padding: 25px 20px; /* ลด Padding ลงเมื่อจอเล็ก */
+                padding: 25px 20px;
                 border-radius: 16px;
             }
 
             .converter-card h1 {
-                font-size: 20px; /* ลดขนาดฟอนต์ */
+                font-size: 20px;
             }
 
             .file-upload-box {
@@ -220,7 +221,7 @@
                 font-size: 14px;
             }
 
-            select, .btn-convert {
+            select, input[type="text"], .btn-convert {
                 font-size: 15px;
                 padding: 10px 14px;
             }
@@ -241,6 +242,11 @@
                 <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
             <span id="fileName">คลิกเพื่อเลือกไฟล์ หรือลากมาวางที่นี่</span>
+        </div>
+
+        <div class="form-group">
+            <label for="outputFileName">ตั้งชื่อไฟล์ใหม่ (ไม่ต้องใส่จุดนามสกุล)</label>
+            <input type="text" id="outputFileName" placeholder="เช่น my_new_video">
         </div>
 
         <div class="form-group">
@@ -285,7 +291,7 @@
 
         <div class="result-container" id="resultContainer">
             <p>✅ แปลงไฟล์สำเร็จ!</p>
-            <a href="#" class="btn-download" id="downloadBtn" download>ดาวน์โหลดไฟล์</a>
+            <a href="#" class="btn-download" id="downloadBtn">ดาวน์โหลดไฟล์</a>
         </div>
     </div>
 
@@ -299,16 +305,16 @@
         const resultContainer = document.getElementById('resultContainer');
         const formatSelect = document.getElementById('formatSelect');
         const dropBox = document.getElementById('dropBox');
+        const outputFileName = document.getElementById('outputFileName');
+        const downloadBtn = document.getElementById('downloadBtn');
 
         let selectedFile = null;
+        let objectUrl = null; // เก็บ URL สำหรับดาวน์โหลด
 
-        // --- จุดที่แก้ไข ---
-        // 1. ทำให้คลิกที่กล่องแล้วเปิดหน้าต่างเลือกไฟล์
         dropBox.addEventListener('click', () => {
             fileInput.click();
         });
 
-        // 2. เพิ่มระบบ Drag & Drop ลากไฟล์มาวางได้
         dropBox.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropBox.classList.add('dragover');
@@ -323,43 +329,47 @@
             dropBox.classList.remove('dragover');
             
             if (e.dataTransfer.files.length > 0) {
-                fileInput.files = e.dataTransfer.files; // โยนไฟล์เข้า input
+                fileInput.files = e.dataTransfer.files;
                 handleFileChange(e.dataTransfer.files[0]);
             }
         });
 
-        // ฟังชั่นจัดการเมื่อมีการเลือกหรือลากไฟล์มาวาง
         function handleFileChange(file) {
             if (file) {
                 selectedFile = file;
                 fileNameDisplay.textContent = `ไฟล์ที่เลือก: ${selectedFile.name}`;
                 convertBtn.disabled = false;
                 
-                // Reset UI
+                // แนะนำชื่อไฟล์ตั้งต้นโดยตัดนามสกุลเก่าออก
+                const nameWithoutExt = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.')) || selectedFile.name;
+                outputFileName.value = nameWithoutExt;
+
                 progressContainer.style.display = 'none';
                 resultContainer.style.display = 'none';
                 progressBar.style.width = '0%';
+                
+                // เคลียร์ URL เก่าออกจากหน่วยความจำ (ป้องกัน Memory Leak)
+                if (objectUrl) URL.revokeObjectURL(objectUrl);
             } else {
                 selectedFile = null;
                 fileNameDisplay.textContent = 'คลิกเพื่อเลือกไฟล์ หรือลากมาวางที่นี่';
                 convertBtn.disabled = true;
+                outputFileName.value = '';
             }
         }
 
-        // จับ Event เมื่อเลือกไฟล์ผ่านปุ่มคลิก
         fileInput.addEventListener('change', (e) => {
             handleFileChange(e.target.files[0]);
         });
-        // --- สิ้นสุดจุดที่แก้ไข ---
 
-        // จำลองระบบแปลงไฟล์
         convertBtn.addEventListener('click', () => {
             if (!selectedFile) return;
 
             convertBtn.disabled = true;
             fileInput.disabled = true;
             formatSelect.disabled = true;
-            dropBox.style.pointerEvents = 'none'; // ปิดการคลิกกล่องระหว่างแปลง
+            outputFileName.disabled = true;
+            dropBox.style.pointerEvents = 'none';
             
             progressContainer.style.display = 'block';
             resultContainer.style.display = 'none';
@@ -378,11 +388,26 @@
                         progressContainer.style.display = 'none';
                         resultContainer.style.display = 'block';
                         
+                        // --- ระบบสร้างไฟล์ดาวน์โหลด ---
+                        let finalName = outputFileName.value.trim();
+                        if (!finalName) {
+                            finalName = 'converted_file';
+                        }
+                        
+                        // สร้าง Blob URL จากไฟล์เดิมเพื่อจำลองการดาวน์โหลด
+                        const blob = new Blob([selectedFile], { type: selectedFile.type });
+                        objectUrl = URL.createObjectURL(blob);
+                        
+                        downloadBtn.href = objectUrl;
+                        downloadBtn.download = `${finalName}.${targetFormat}`; // ตั้งชื่อไฟล์ใหม่ + นามสกุลที่เลือก
+                        // -----------------------------
+
                         fileInput.disabled = false;
                         formatSelect.disabled = false;
+                        outputFileName.disabled = false;
                         convertBtn.disabled = false;
                         convertBtn.textContent = 'แปลงไฟล์อีกครั้ง';
-                        dropBox.style.pointerEvents = 'auto'; // เปิดการคลิกกล่องใหม่
+                        dropBox.style.pointerEvents = 'auto';
                     }, 500);
                 }
                 
