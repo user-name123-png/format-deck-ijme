@@ -104,7 +104,6 @@
             font-size: 14px;
         }
 
-        /* ใช้ Style เดียวกันทั้ง Select และ Input Text */
         select, input[type="text"] {
             width: 100%;
             padding: 12px 16px;
@@ -203,24 +202,19 @@
                 padding: 25px 20px;
                 border-radius: 16px;
             }
-
             .converter-card h1 {
                 font-size: 20px;
             }
-
             .file-upload-box {
                 padding: 30px 15px;
             }
-
             .file-upload-box svg {
                 width: 32px;
                 height: 32px;
             }
-
             .file-upload-box span {
                 font-size: 14px;
             }
-
             select, input[type="text"], .btn-convert {
                 font-size: 15px;
                 padding: 10px 14px;
@@ -262,7 +256,7 @@
                     <option value="webm">.webm</option>
                     <option value="m4v">.m4v</option>
                     <option value="3gp">.3gp</option>
-                    <option value="mpeg">.mpeg / .mpg</option>
+                    <option value="mpeg">.mpeg</option>
                     <option value="ts">.ts</option>
                 </optgroup>
                 <optgroup label="Audio Formats">
@@ -309,7 +303,14 @@
         const downloadBtn = document.getElementById('downloadBtn');
 
         let selectedFile = null;
-        let objectUrl = null; // เก็บ URL สำหรับดาวน์โหลด
+        let objectUrl = null; 
+
+        // ฐานข้อมูลจำลอง MIME Type สำหรับบังคับให้ระบบมองเป็นไฟล์สกุลใหม่
+        const mimeTypes = {
+            'mp4': 'video/mp4', 'mkv': 'video/x-matroska', 'webm': 'video/webm',
+            'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'ogg': 'audio/ogg',
+            'm4a': 'audio/mp4', 'flac': 'audio/flac'
+        };
 
         dropBox.addEventListener('click', () => {
             fileInput.click();
@@ -327,7 +328,6 @@
         dropBox.addEventListener('drop', (e) => {
             e.preventDefault();
             dropBox.classList.remove('dragover');
-            
             if (e.dataTransfer.files.length > 0) {
                 fileInput.files = e.dataTransfer.files;
                 handleFileChange(e.dataTransfer.files[0]);
@@ -340,15 +340,16 @@
                 fileNameDisplay.textContent = `ไฟล์ที่เลือก: ${selectedFile.name}`;
                 convertBtn.disabled = false;
                 
-                // แนะนำชื่อไฟล์ตั้งต้นโดยตัดนามสกุลเก่าออก
-                const nameWithoutExt = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.')) || selectedFile.name;
+                // ตรวจหาจุด (.) อันสุดท้ายแล้วตัดนามสกุลออก
+                const lastDotIndex = selectedFile.name.lastIndexOf('.');
+                const nameWithoutExt = lastDotIndex !== -1 ? selectedFile.name.substring(0, lastDotIndex) : selectedFile.name;
+                
                 outputFileName.value = nameWithoutExt;
 
                 progressContainer.style.display = 'none';
                 resultContainer.style.display = 'none';
                 progressBar.style.width = '0%';
                 
-                // เคลียร์ URL เก่าออกจากหน่วยความจำ (ป้องกัน Memory Leak)
                 if (objectUrl) URL.revokeObjectURL(objectUrl);
             } else {
                 selectedFile = null;
@@ -388,19 +389,20 @@
                         progressContainer.style.display = 'none';
                         resultContainer.style.display = 'block';
                         
-                        // --- ระบบสร้างไฟล์ดาวน์โหลด ---
                         let finalName = outputFileName.value.trim();
                         if (!finalName) {
                             finalName = 'converted_file';
                         }
                         
-                        // สร้าง Blob URL จากไฟล์เดิมเพื่อจำลองการดาวน์โหลด
-                        const blob = new Blob([selectedFile], { type: selectedFile.type });
-                        objectUrl = URL.createObjectURL(blob);
+                        // --- แก้ไขจุดนี้: บังคับเปลี่ยน MIME Type หรือใช้ octet-stream ---
+                        // เพื่อป้องกัน iOS เติมนามสกุลเดิมต่อท้าย
+                        const newMimeType = mimeTypes[targetFormat] || 'application/octet-stream';
+                        const blob = new Blob([selectedFile], { type: newMimeType });
                         
+                        objectUrl = URL.createObjectURL(blob);
                         downloadBtn.href = objectUrl;
-                        downloadBtn.download = `${finalName}.${targetFormat}`; // ตั้งชื่อไฟล์ใหม่ + นามสกุลที่เลือก
-                        // -----------------------------
+                        downloadBtn.download = `${finalName}.${targetFormat}`;
+                        // -----------------------------------------------------------
 
                         fileInput.disabled = false;
                         formatSelect.disabled = false;
