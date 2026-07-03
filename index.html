@@ -3,305 +3,432 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal Media Converter</title>
-    
+    <title>Filebridge — แปลงไฟล์ทุกฟอร์แมต</title>
+
     <link rel="icon" href="favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600&display=swap" rel="stylesheet">
-    
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+
     <style>
         :root {
-            --primary: #6C5CE7;
-            --secondary: #A29BFE;
-            --bg-gradient: linear-gradient(135deg, #74EBD5 0%, #9FACE6 100%);
-            --glass-bg: rgba(255, 255, 255, 0.25);
-            --glass-border: rgba(255, 255, 255, 0.4);
-            --text-dark: #2D3436;
+            --bg-0: #0B0D13;
+            --bg-1: radial-gradient(1100px 600px at 15% -10%, #1B2036 0%, transparent 60%),
+                     radial-gradient(900px 500px at 110% 10%, #1A2A2C 0%, transparent 55%),
+                     #0B0D13;
+            --surface: #14161F;
+            --surface-2: #1A1D29;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --ink: #EEEFF4;
+            --muted: #8B92A6;
+            --accent: #FFB020;
+            --accent-2: #5B8DEF;
+            --success: #3DDC97;
+            --radius: 18px;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Prompt', sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background: var(--bg-gradient);
+            font-family: 'IBM Plex Sans Thai', sans-serif;
+            background: var(--bg-1);
+            background-attachment: fixed;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
-            color: var(--text-dark);
+            padding: 32px 20px;
+            color: var(--ink);
         }
 
-        .converter-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 40px;
+        .mono { font-family: 'IBM Plex Mono', monospace; }
+
+        .card {
             width: 100%;
-            max-width: 500px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            transition: all 0.3s ease;
+            max-width: 480px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 36px 32px 32px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.45);
         }
 
-        .converter-card h1 {
+        .eyebrow {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
             font-weight: 600;
+            letter-spacing: 0.16em;
+            color: var(--accent);
+            text-transform: uppercase;
             margin-bottom: 10px;
-            font-size: 24px;
         }
 
-        .converter-card p {
-            font-weight: 300;
-            margin-bottom: 30px;
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            margin-bottom: 8px;
+        }
+
+        .subhead {
             font-size: 14px;
-            color: #4a4a4a;
+            font-weight: 400;
+            color: var(--muted);
+            line-height: 1.6;
+            margin-bottom: 28px;
         }
 
-        #fileInput {
-            display: none;
+        /* --- Bridge signature element --- */
+        .bridge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 28px;
         }
 
-        .file-upload-box {
-            border: 2px dashed var(--primary);
-            border-radius: 16px;
-            padding: 40px 20px;
-            background: rgba(255, 255, 255, 0.5);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 25px;
-        }
-
-        .file-upload-box:hover, .file-upload-box.dragover {
-            background: rgba(255, 255, 255, 0.9);
-            transform: translateY(-2px);
-            border-color: #5A4BDE;
-        }
-
-        .file-upload-box span {
-            display: block;
-            margin-top: 10px;
+        .bridge-tag {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12.5px;
             font-weight: 600;
-            color: var(--primary);
-            word-break: break-word;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-strong);
+            background: var(--surface-2);
+            color: var(--muted);
+            white-space: nowrap;
+            min-width: 76px;
+            text-align: center;
+            transition: all 0.25s ease;
         }
 
-        .form-group {
-            margin-bottom: 25px;
-            text-align: left;
+        .bridge-tag.filled.source {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: rgba(255, 176, 32, 0.08);
         }
 
-        .form-group label {
+        .bridge-tag.filled.target {
+            color: var(--accent-2);
+            border-color: var(--accent-2);
+            background: rgba(91, 141, 239, 0.1);
+        }
+
+        .bridge-span {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, var(--border-strong), var(--border-strong));
+            position: relative;
+        }
+
+        .bridge-span.active {
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        }
+
+        .bridge-span::after {
+            content: '';
+            position: absolute;
+            right: -1px;
+            top: 50%;
+            width: 6px;
+            height: 6px;
+            border-top: 1.5px solid var(--border-strong);
+            border-right: 1.5px solid var(--border-strong);
+            transform: translateY(-50%) rotate(45deg);
+        }
+
+        .bridge-span.active::after {
+            border-color: var(--accent-2);
+        }
+
+        /* --- Form elements --- */
+        input[type="file"] { display: none; }
+
+        .dropzone {
+            position: relative;
+            border-radius: 14px;
+            padding: 34px 16px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            text-align: center;
+            transition: border-color 0.2s ease, background 0.2s ease;
+            margin-bottom: 22px;
+        }
+
+        .dropzone::before,
+        .dropzone::after,
+        .corner-tl, .corner-br { display: none; }
+
+        .dropzone .corners span {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-color: var(--border-strong);
+            transition: border-color 0.2s ease;
+        }
+        .dropzone .corners span:nth-child(1) { top: 10px; left: 10px; border-top: 2px solid; border-left: 2px solid; }
+        .dropzone .corners span:nth-child(2) { top: 10px; right: 10px; border-top: 2px solid; border-right: 2px solid; }
+        .dropzone .corners span:nth-child(3) { bottom: 10px; left: 10px; border-bottom: 2px solid; border-left: 2px solid; }
+        .dropzone .corners span:nth-child(4) { bottom: 10px; right: 10px; border-bottom: 2px solid; border-right: 2px solid; }
+
+        .dropzone:hover,
+        .dropzone.dragover {
+            background: #1F2333;
+            border-color: rgba(255,255,255,0.12);
+        }
+
+        .dropzone:hover .corners span,
+        .dropzone.dragover .corners span {
+            border-color: var(--accent);
+        }
+
+        .dropzone svg { color: var(--muted); }
+
+        .dz-title {
+            display: block;
+            margin-top: 12px;
+            font-weight: 600;
+            font-size: 14.5px;
+            color: var(--ink);
+        }
+
+        .dz-hint {
+            display: block;
+            margin-top: 4px;
+            font-size: 12.5px;
+            color: var(--muted);
+        }
+
+        .field { margin-bottom: 20px; text-align: left; }
+
+        .field label {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
+            color: var(--muted);
         }
 
         input[type="text"] {
             width: 100%;
-            padding: 12px 16px;
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-            background: rgba(255, 255, 255, 0.7);
-            font-size: 16px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--ink);
+            font-family: 'IBM Plex Sans Thai', sans-serif;
+            font-size: 15px;
             outline: none;
-            transition: border 0.3s;
+            transition: border-color 0.2s ease;
         }
+
+        input[type="text"]::placeholder { color: #565C6E; }
 
         input[type="text"]:focus {
-            border-color: var(--primary);
+            border-color: var(--accent-2);
         }
 
-        .custom-select-wrapper {
-            position: relative;
-        }
+        input[type="text"]:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .select-wrap { position: relative; }
 
         .options-list {
             display: none;
             position: absolute;
-            top: 100%;
+            top: calc(100% + 6px);
             left: 0;
             width: 100%;
-            max-height: 250px;
+            max-height: 260px;
             overflow-y: auto;
-            background: rgba(255, 255, 255, 0.95);
-            border: 1px solid var(--glass-border);
+            background: #191C27;
+            border: 1px solid var(--border-strong);
             border-radius: 12px;
-            margin-top: 5px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             z-index: 100;
             text-align: left;
-            backdrop-filter: blur(10px);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.5);
         }
 
-        .options-list::-webkit-scrollbar {
-            width: 8px;
-        }
-        
-        .options-list::-webkit-scrollbar-thumb {
-            background: #ccc;
-            border-radius: 8px;
-        }
+        .options-list::-webkit-scrollbar { width: 8px; }
+        .options-list::-webkit-scrollbar-thumb { background: #333747; border-radius: 8px; }
 
         .option-group {
-            padding: 8px 16px;
-            font-size: 12px;
+            padding: 9px 14px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10.5px;
             font-weight: 600;
-            color: #666;
-            background: #f1f2f6;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            background: #14161F;
             text-transform: uppercase;
             position: sticky;
             top: 0;
-            z-index: 2;
         }
 
         .option-item {
-            padding: 10px 16px;
+            padding: 10px 14px;
             cursor: pointer;
-            font-size: 15px;
-            transition: background 0.2s;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 14px;
+            color: #C7CBDA;
+            transition: background 0.15s ease, color 0.15s ease;
         }
 
         .option-item:hover {
-            background: var(--secondary);
-            color: white;
+            background: rgba(91, 141, 239, 0.14);
+            color: var(--ink);
         }
 
         .btn-convert {
             width: 100%;
             padding: 14px;
-            background: var(--primary);
-            color: white;
+            background: var(--accent);
+            color: #1A1000;
             border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
+            border-radius: 10px;
+            font-family: 'IBM Plex Sans Thai', sans-serif;
+            font-size: 15.5px;
+            font-weight: 700;
             cursor: pointer;
-            transition: background 0.3s, transform 0.2s;
+            transition: background 0.2s ease, transform 0.15s ease;
         }
 
-        .btn-convert:hover {
-            background: #5A4BDE;
-            transform: translateY(-2px);
+        .btn-convert:hover:not(:disabled) {
+            background: #FFC04D;
+            transform: translateY(-1px);
         }
 
         .btn-convert:disabled {
-            background: #a0a0a0;
+            background: #33384A;
+            color: #6B7185;
             cursor: not-allowed;
             transform: none;
         }
 
-        .progress-container {
-            display: none;
-            margin-top: 25px;
-            text-align: left;
+        .btn-convert:focus-visible,
+        input[type="text"]:focus-visible,
+        .dropzone:focus-visible {
+            outline: 2px solid var(--accent-2);
+            outline-offset: 2px;
         }
 
-        .progress-bar-bg {
-            width: 100%;
-            height: 10px;
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 8px;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            width: 0%;
-            background: var(--primary);
-            border-radius: 10px;
-            transition: width 0.4s ease;
-        }
+        .progress-wrap { display: none; margin-top: 22px; text-align: left; }
 
         .status-text {
-            font-size: 14px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 12.5px;
             font-weight: 600;
-            color: var(--primary);
+            color: var(--accent-2);
+            margin-bottom: 8px;
         }
 
-        .result-container {
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background: var(--surface-2);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            border-radius: 10px;
+            transition: width 0.35s ease;
+        }
+
+        .result-wrap {
             display: none;
-            margin-top: 20px;
+            margin-top: 22px;
+            padding: 16px;
+            border-radius: 12px;
+            background: rgba(61, 220, 151, 0.08);
+            border: 1px solid rgba(61, 220, 151, 0.3);
+            text-align: center;
+        }
+
+        .result-wrap p {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--success);
+            margin-bottom: 12px;
         }
 
         .btn-download {
             display: inline-block;
-            margin-top: 10px;
-            padding: 10px 24px;
-            background: #00b894;
-            color: white;
+            padding: 10px 22px;
+            background: var(--success);
+            color: #08201A;
             text-decoration: none;
             border-radius: 8px;
-            font-weight: 600;
-            transition: background 0.3s;
+            font-weight: 700;
+            font-size: 14px;
+            transition: background 0.2s ease;
         }
 
-        .btn-download:hover {
-            background: #00a383;
+        .btn-download:hover { background: #58E6AA; }
+
+        @media (max-width: 480px) {
+            .card { padding: 28px 20px; border-radius: 14px; }
+            h1 { font-size: 22px; }
+            .bridge-tag { font-size: 11px; min-width: 64px; padding: 7px 8px; }
         }
 
-        @media (max-width: 500px) {
-            .converter-card {
-                padding: 25px 20px;
-                border-radius: 16px;
-            }
-            .file-upload-box {
-                padding: 30px 15px;
-            }
-            input[type="text"], .btn-convert {
-                font-size: 15px;
-                padding: 10px 14px;
-            }
+        @media (prefers-reduced-motion: reduce) {
+            * { transition: none !important; }
         }
     </style>
 </head>
 <body>
 
-    <div class="converter-card">
-        <h1>แปลงนามสกุลไฟล์</h1>
-        <p>รองรับวิดีโอ, เสียง, รูปภาพ, รูป RAW และเอกสาร</p>
+    <div class="card">
+        <div class="eyebrow">File Converter</div>
+        <h1>Filebridge</h1>
+        <p class="subhead">แปลงไฟล์ข้ามฟอร์แมต — วิดีโอ เสียง รูปภาพ ไฟล์ RAW เอกสาร และอีบุ๊ก ในที่เดียว</p>
+
+        <div class="bridge">
+            <div class="bridge-tag source" id="sourceTag">ไฟล์ต้นทาง</div>
+            <div class="bridge-span" id="bridgeSpan"></div>
+            <div class="bridge-tag target" id="targetTag">ฟอร์แมตปลายทาง</div>
+        </div>
 
         <input type="file" id="fileInput" accept="*/*">
-        
-        <div class="file-upload-box" id="dropBox">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6C5CE7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+        <div class="dropzone" id="dropBox" tabindex="0" role="button" aria-label="เลือกไฟล์เพื่อแปลง">
+            <div class="corners"><span></span><span></span><span></span><span></span></div>
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
                 <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
-            <span id="fileName">คลิกเพื่อเลือกไฟล์ หรือลากมาวางที่นี่</span>
+            <span class="dz-title" id="fileName">ลากไฟล์มาวาง หรือคลิกเพื่อเลือก</span>
+            <span class="dz-hint">รองรับไฟล์แทบทุกประเภท</span>
         </div>
 
-        <div class="form-group">
-            <label for="outputFileName">ตั้งชื่อไฟล์ใหม่ (ไม่ต้องใส่จุดนามสกุล)</label>
-            <input type="text" id="outputFileName" placeholder="เช่น my_new_file">
+        <div class="field">
+            <label for="outputFileName">ชื่อไฟล์ผลลัพธ์</label>
+            <input type="text" id="outputFileName" placeholder="เช่น my-new-file" disabled>
         </div>
 
-        <div class="form-group custom-select-wrapper">
-            <label for="formatSearch">ค้นหาหรือเลือกนามสกุลไฟล์ที่ต้องการแปลง</label>
-            <input type="text" id="formatSearch" placeholder="พิมพ์ค้นหา (เช่น mp4, jpg)..." autocomplete="off" disabled>
+        <div class="field select-wrap">
+            <label for="formatSearch">แปลงเป็นฟอร์แมต</label>
+            <input type="text" id="formatSearch" placeholder="เลือกไฟล์ก่อน เพื่อดูฟอร์แมตที่แปลงได้" autocomplete="off" disabled>
             <div class="options-list" id="optionsList"></div>
         </div>
 
-        <button class="btn-convert" id="convertBtn" disabled>เริ่มการแปลงไฟล์</button>
+        <button class="btn-convert" id="convertBtn" disabled>แปลงไฟล์</button>
 
-        <div class="progress-container" id="progressContainer">
-            <div class="status-text" id="statusText">กำลังเตรียมการ... 0%</div>
-            <div class="progress-bar-bg">
-                <div class="progress-bar-fill" id="progressBar"></div>
+        <div class="progress-wrap" id="progressContainer">
+            <div class="status-text" id="statusText">กำลังแปลงไฟล์... 0%</div>
+            <div class="progress-track">
+                <div class="progress-fill" id="progressBar"></div>
             </div>
         </div>
 
-        <div class="result-container" id="resultContainer">
-            <p>✅ แปลงไฟล์สำเร็จ!</p>
+        <div class="result-wrap" id="resultContainer">
+            <p>แปลงไฟล์สำเร็จ</p>
             <a href="#" class="btn-download" id="downloadBtn">ดาวน์โหลดไฟล์</a>
         </div>
     </div>
@@ -319,9 +446,12 @@
         const downloadBtn = document.getElementById('downloadBtn');
         const formatSearch = document.getElementById('formatSearch');
         const optionsList = document.getElementById('optionsList');
+        const sourceTag = document.getElementById('sourceTag');
+        const targetTag = document.getElementById('targetTag');
+        const bridgeSpan = document.getElementById('bridgeSpan');
 
         let selectedFile = null;
-        let objectUrl = null; 
+        let objectUrl = null;
 
         const formatGroups = {
             "วิดีโอ (Video)": ["mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "m4v", "3gp", "mpeg", "mpg", "ts"],
@@ -333,15 +463,14 @@
             "อีบุ๊ค (eBook)": ["epub", "mobi", "azw", "azw3", "azw4", "kfx", "fb2", "djvu", "djv", "xps", "oxps", "abw", "zabw", "sxw", "sxc", "sxi", "sxg", "stw", "uot", "uof", "uos", "uos2"]
         };
 
-        // กฎที่แก้ไขให้เข้มงวด: อนุญาตให้แปลงเฉพาะในหมวดหมู่ที่เหมาะสมเท่านั้น
         const conversionRules = {
-            "วิดีโอ (Video)": ["วิดีโอ (Video)", "เสียง (Audio)"], // วิดีโอแปลงเป็นวิดีโอด้วยกัน หรือแยกเฉพาะไฟล์เสียง
-            "เสียง (Audio)": ["เสียง (Audio)"], // เสียงแปลงเป็นเสียงเท่านั้น
-            "รูปภาพทั่วไป (Image)": ["รูปภาพทั่วไป (Image)"], // ภาพแปลงเป็นภาพเท่านั้น
-            "รูปภาพจากกล้อง (Camera RAW)": ["รูปภาพทั่วไป (Image)", "รูปภาพจากกล้อง (Camera RAW)"], // ไฟล์ RAW แปลงเป็นภาพทั่วไปได้
-            "เอกสาร (Document & PDF)": ["เอกสาร (Document & PDF)"], // เอกสารแปลงเป็นเอกสารเท่านั้น
-            "ข้อมูลและการแสดงผล (Data & Code)": ["ข้อมูลและการแสดงผล (Data & Code)"], // ไฟล์สคริปต์/ข้อมูล แปลงเป็นประเภทเดียวกันเท่านั้น
-            "อีบุ๊ค (eBook)": ["อีบุ๊ค (eBook)"] // อีบุ๊คแปลงเป็นอีบุ๊คเท่านั้น
+            "วิดีโอ (Video)": ["วิดีโอ (Video)", "เสียง (Audio)"],
+            "เสียง (Audio)": ["เสียง (Audio)"],
+            "รูปภาพทั่วไป (Image)": ["รูปภาพทั่วไป (Image)"],
+            "รูปภาพจากกล้อง (Camera RAW)": ["รูปภาพทั่วไป (Image)", "รูปภาพจากกล้อง (Camera RAW)"],
+            "เอกสาร (Document & PDF)": ["เอกสาร (Document & PDF)"],
+            "ข้อมูลและการแสดงผล (Data & Code)": ["ข้อมูลและการแสดงผล (Data & Code)"],
+            "อีบุ๊ค (eBook)": ["อีบุ๊ค (eBook)"]
         };
 
         const mimeTypes = {
@@ -360,14 +489,13 @@
             return null;
         }
 
-        // สร้างตัวเลือก (Options) ใน Dropdown
         for (const [groupName, extensions] of Object.entries(formatGroups)) {
             const groupDiv = document.createElement('div');
             groupDiv.className = 'option-group';
             groupDiv.dataset.group = groupName;
             groupDiv.textContent = groupName;
             optionsList.appendChild(groupDiv);
-            
+
             extensions.forEach(ext => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'option-item';
@@ -377,22 +505,20 @@
                 itemDiv.textContent = `.${ext}`;
                 itemDiv.style.display = 'none';
                 optionsList.appendChild(itemDiv);
-                
+
                 itemDiv.addEventListener('click', () => {
                     formatSearch.value = `.${ext}`;
                     optionsList.style.display = 'none';
+                    updateTargetTag(ext);
                     checkReadyState();
                 });
             });
         }
 
-        // ฟังก์ชันกรองนามสกุลที่อนุญาตอย่างเข้มงวด
         function filterAllowedFormats(sourceExtension) {
             const sourceGroup = getFileGroup(sourceExtension);
-            
-            // ถ้าไม่รู้จักไฟล์ ให้เปิดให้แปลงได้ทั้งหมด (เพื่อกันไฟล์แปลกๆ) แต่ถ้ารู้จัก จะใช้กฎความเข้มงวด
-            const allowedGroups = sourceGroup && conversionRules[sourceGroup] 
-                                    ? conversionRules[sourceGroup] 
+            const allowedGroups = sourceGroup && conversionRules[sourceGroup]
+                                    ? conversionRules[sourceGroup]
                                     : Object.keys(formatGroups);
 
             const items = optionsList.querySelectorAll('.option-item');
@@ -401,7 +527,6 @@
             items.forEach(item => {
                 const targetExt = item.dataset.value;
                 const targetGroup = item.dataset.group;
-                
                 if (allowedGroups.includes(targetGroup) && targetExt !== sourceExtension.toLowerCase()) {
                     item.dataset.allowed = "true";
                     item.style.display = 'block';
@@ -412,12 +537,35 @@
             });
 
             groups.forEach(group => {
-                if (allowedGroups.includes(group.dataset.group)) {
-                    group.style.display = 'block';
-                } else {
-                    group.style.display = 'none';
-                }
+                group.style.display = allowedGroups.includes(group.dataset.group) ? 'block' : 'none';
             });
+        }
+
+        function updateSourceTag(ext) {
+            if (ext) {
+                sourceTag.textContent = `.${ext.toLowerCase()}`;
+                sourceTag.classList.add('filled');
+            } else {
+                sourceTag.textContent = 'ไฟล์ต้นทาง';
+                sourceTag.classList.remove('filled');
+            }
+            refreshBridgeSpan();
+        }
+
+        function updateTargetTag(ext) {
+            if (ext) {
+                targetTag.textContent = `.${ext.toLowerCase()}`;
+                targetTag.classList.add('filled');
+            } else {
+                targetTag.textContent = 'ฟอร์แมตปลายทาง';
+                targetTag.classList.remove('filled');
+            }
+            refreshBridgeSpan();
+        }
+
+        function refreshBridgeSpan() {
+            const bothFilled = sourceTag.classList.contains('filled') && targetTag.classList.contains('filled');
+            bridgeSpan.classList.toggle('active', bothFilled);
         }
 
         formatSearch.addEventListener('focus', () => {
@@ -427,24 +575,24 @@
         formatSearch.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase().replace('.', '');
             const items = optionsList.querySelectorAll('.option-item');
-            
             items.forEach(item => {
-                if (item.dataset.allowed === "true" && item.dataset.value.toLowerCase().includes(searchTerm)) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
-                }
+                item.style.display = (item.dataset.allowed === "true" && item.dataset.value.toLowerCase().includes(searchTerm)) ? 'block' : 'none';
             });
+            const exactMatch = [...items].find(i => i.dataset.allowed === "true" && i.dataset.value.toLowerCase() === searchTerm);
+            updateTargetTag(exactMatch ? exactMatch.dataset.value : null);
             checkReadyState();
         });
 
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.custom-select-wrapper')) {
+            if (!e.target.closest('.select-wrap')) {
                 optionsList.style.display = 'none';
             }
         });
 
         dropBox.addEventListener('click', () => fileInput.click());
+        dropBox.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+        });
         dropBox.addEventListener('dragover', (e) => { e.preventDefault(); dropBox.classList.add('dragover'); });
         dropBox.addEventListener('dragleave', () => dropBox.classList.remove('dragover'));
         dropBox.addEventListener('drop', (e) => {
@@ -459,27 +607,34 @@
         function handleFileChange(file) {
             if (file) {
                 selectedFile = file;
-                fileNameDisplay.textContent = `ไฟล์ที่เลือก: ${selectedFile.name}`;
-                
+                fileNameDisplay.textContent = selectedFile.name;
+
                 const lastDotIndex = selectedFile.name.lastIndexOf('.');
                 const extension = lastDotIndex !== -1 ? selectedFile.name.substring(lastDotIndex + 1) : '';
                 outputFileName.value = lastDotIndex !== -1 ? selectedFile.name.substring(0, lastDotIndex) : selectedFile.name;
+                outputFileName.disabled = false;
 
                 formatSearch.value = '';
                 formatSearch.disabled = false;
+                formatSearch.placeholder = 'พิมพ์ค้นหา เช่น mp4, jpg...';
                 filterAllowedFormats(extension);
+                updateSourceTag(extension);
+                updateTargetTag(null);
 
                 progressContainer.style.display = 'none';
                 resultContainer.style.display = 'none';
                 progressBar.style.width = '0%';
-                
+
                 if (objectUrl) URL.revokeObjectURL(objectUrl);
             } else {
                 selectedFile = null;
-                fileNameDisplay.textContent = 'คลิกเพื่อเลือกไฟล์ หรือลากมาวางที่นี่';
+                fileNameDisplay.textContent = 'ลากไฟล์มาวาง หรือคลิกเพื่อเลือก';
                 outputFileName.value = '';
+                outputFileName.disabled = true;
                 formatSearch.value = '';
                 formatSearch.disabled = true;
+                updateSourceTag(null);
+                updateTargetTag(null);
             }
             checkReadyState();
         }
@@ -488,11 +643,7 @@
 
         function checkReadyState() {
             const formatSelected = formatSearch.value.replace('.', '').trim();
-            if (selectedFile && formatSelected) {
-                convertBtn.disabled = false;
-            } else {
-                convertBtn.disabled = true;
-            }
+            convertBtn.disabled = !(selectedFile && formatSelected);
         }
 
         convertBtn.addEventListener('click', () => {
@@ -504,10 +655,10 @@
             formatSearch.disabled = true;
             outputFileName.disabled = true;
             dropBox.style.pointerEvents = 'none';
-            
+
             progressContainer.style.display = 'block';
             resultContainer.style.display = 'none';
-            
+
             let progress = 0;
 
             const interval = setInterval(() => {
@@ -515,17 +666,16 @@
                 if (progress >= 100) {
                     progress = 100;
                     clearInterval(interval);
-                    
+
                     setTimeout(() => {
-                        statusText.textContent = `แปลงไฟล์เสร็จสิ้น!`;
                         progressContainer.style.display = 'none';
                         resultContainer.style.display = 'block';
-                        
+
                         let finalName = outputFileName.value.trim() || 'converted_file';
-                        
+
                         const newMimeType = mimeTypes[targetFormat] || 'application/octet-stream';
                         const blob = new Blob([selectedFile], { type: newMimeType });
-                        
+
                         objectUrl = URL.createObjectURL(blob);
                         downloadBtn.href = objectUrl;
                         downloadBtn.download = `${finalName}.${targetFormat}`;
@@ -534,11 +684,11 @@
                         formatSearch.disabled = false;
                         outputFileName.disabled = false;
                         convertBtn.disabled = false;
-                        convertBtn.textContent = 'แปลงไฟล์อีกครั้ง';
+                        convertBtn.textContent = 'แปลงไฟล์อีกไฟล์';
                         dropBox.style.pointerEvents = 'auto';
                     }, 500);
                 }
-                
+
                 progressBar.style.width = `${progress}%`;
                 statusText.textContent = `กำลังแปลงไฟล์เป็น .${targetFormat}... ${progress}%`;
             }, 300);
