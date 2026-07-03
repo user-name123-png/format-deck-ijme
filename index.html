@@ -11,6 +11,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 
+	<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+
     <style>
         :root {
             --bg-0: #0B0D13;
@@ -646,53 +648,86 @@
             convertBtn.disabled = !(selectedFile && formatSelected);
         }
 
-        convertBtn.addEventListener('click', () => {
-            const targetFormat = formatSearch.value.replace('.', '').trim().toLowerCase();
-            if (!selectedFile || !targetFormat) return;
+        const { createFFmpeg, fetchFile } = FFmpeg;
+// โหลด FFmpeg (ตั้งค่า log เป็น true เพื่อดูการทำงานใน Console)
+const ffmpeg = createFFmpeg({ log: true });
 
-            convertBtn.disabled = true;
-            fileInput.disabled = true;
-            formatSearch.disabled = true;
-            outputFileName.disabled = true;
-            dropBox.style.pointerEvents = 'none';
+convertBtn.addEventListener('click', async () => {
+    const targetFormat = formatSearch.value.replace('.', '').trim().toLowerCase();
+    if (!selectedFile || !targetFormat) return;
 
-            progressContainer.style.display = 'block';
-            resultContainer.style.display = 'none';
+    // ล็อก UI ระหว่างทำงาน
+    convertBtn.disabled = true;
+    fileInput.disabled = true;
+    formatSearch.disabled = true;
+    outputFileName.disabled = true;
+    dropBox.style.pointerEvents = 'none';
 
-            let progress = 0;
+    progressContainer.style.display = 'block';
+    resultContainer.style.display = 'none';
+    progressBar.style.width = '0%';
+    statusText.textContent = 'กำลังเตรียมระบบแปลงไฟล์... (อาจใช้เวลาโหลดครั้งแรกเล็กน้อย)';
 
-            const interval = setInterval(() => {
-                progress += Math.floor(Math.random() * 10) + 5;
-                if (progress >= 100) {
-                    progress = 100;
-                    clearInterval(interval);
+    try {
+        // โหลด Core ของ FFmpeg ถ้ายังไม่ได้โหลด
+        if (!ffmpeg.isLoaded()) {
+            await ffmpeg.load();
+        }
 
-                    setTimeout(() => {
-                        progressContainer.style.display = 'none';
-                        resultContainer.style.display = 'block';
+        const inputFileName = `input_${selectedFile.name}`;
+        const outputFileNameExt = `output.${targetFormat}`;
 
-                        let finalName = outputFileName.value.trim() || 'converted_file';
+        // เขียนไฟล์ต้นฉบับลงในระบบไฟล์จำลองของเบราว์เซอร์
+        ffmpeg.FS('writeFile', inputFileName, await fetchFile(selectedFile));
 
-                        const newMimeType = mimeTypes[targetFormat] || 'application/octet-stream';
-                        const blob = new Blob([selectedFile], { type: newMimeType });
-
-                        objectUrl = URL.createObjectURL(blob);
-                        downloadBtn.href = objectUrl;
-                        downloadBtn.download = `${finalName}.${targetFormat}`;
-
-                        fileInput.disabled = false;
-                        formatSearch.disabled = false;
-                        outputFileName.disabled = false;
-                        convertBtn.disabled = false;
-                        convertBtn.textContent = 'แปลงไฟล์อีกไฟล์';
-                        dropBox.style.pointerEvents = 'auto';
-                    }, 500);
-                }
-
-                progressBar.style.width = `${progress}%`;
-                statusText.textContent = `กำลังแปลงไฟล์เป็น .${targetFormat}... ${progress}%`;
-            }, 300);
+        // อัปเดต Progress Bar ตามความคืบหน้าจริงของ FFmpeg
+        ffmpeg.setProgress(({ ratio }) => {
+            let percent = Math.round(ratio * 100);
+            if (percent < 0) percent = 0;
+            if (percent > 100) percent = 100;
+            
+            progressBar.style.width = `${percent}%`;
+            statusText.textContent = `กำลังแปลงไฟล์เป็น .${targetFormat}... ${percent}%`;
         });
+
+        // รันคำสั่งแปลงไฟล์ (เช่น แปลงเป็น ogg จะเป็นการดึงเฉพาะเสียงออกมาโดยอัตโนมัติ)
+        await ffmpeg.run('-i', inputFileName, outputFileNameExt);
+
+        // ดึงไฟล์ผลลัพธ์ออกมา
+        const data = ffmpeg.FS('readFile', outputFileNameExt);
+        const newMimeType = mimeTypes[targetFormat] || 'application/octet-stream';
+        
+        // สร้าง Blob จากข้อมูลที่ถูกแปลงแล้วจริงๆ
+        const blob = new Blob([data.buffer], { type: newMimeType });
+
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = URL.createObjectURL(blob);
+        
+        let finalName = outputFileName.value.trim() || 'converted_file';
+        downloadBtn.href = objectUrl;
+        downloadBtn.download = `${finalName}.${targetFormat}`;
+
+        // เคลียร์ไฟล์จำลองทิ้งเพื่อคืนพื้นที่หน่วยความจำ
+        ffmpeg.FS('unlink', inputFileName);
+        ffmpeg.FS('unlink', outputFileNameExt);
+
+        progressContainer.style.display = 'none';
+        resultContainer.style.display = 'block';
+
+    } catch (error) {
+        console.error("Conversion Error: ", error);
+        statusText.textContent = 'เกิดข้อผิดพลาด: ฟอร์แมตนี้อาจยังไม่รองรับหรือไฟล์มีปัญหา';
+        progressBar.style.width = '0%';
+    } finally {
+        // ปลดล็อก UI
+        fileInput.disabled = false;
+        formatSearch.disabled = false;
+        outputFileName.disabled = false;
+        convertBtn.disabled = false;
+        convertBtn.textContent = 'แปลงไฟล์อีกไฟล์';
+        dropBox.style.pointerEvents = 'auto';
+    }
+});
     </script>
 </body>
 </html>
